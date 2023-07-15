@@ -19,33 +19,58 @@ from detectron2.data import MetadataCatalog
 import cv2
 from functools import partial
 
+model_configs = [
+    ("instance-seg", "COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_3x.yaml", 0.5),
+    ("panoptic-seg", "COCO-PanopticSegmentation/panoptic_fpn_R_50_3x.yaml", 0.5),
+    ("keypoints", "COCO-Keypoints/keypoint_rcnn_R_50_FPN_3x.yaml", 0.7),
+    ]
 
-if 'predictor' in st.session_state:
-    predictor = st.session_state['predictor']
-    visualiser_factory = st.session_state['visualiser_factory']
+
+if 'predictors' in st.session_state:
+    predictors = st.session_state['predictors']
+    visualiser_factories = st.session_state['visualiser_factories']
 else:
-    cfg = get_cfg()
-
-    cfg.merge_from_file(model_zoo.get_config_file("COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_3x.yaml"))
-    cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.5
-    cfg.MODEL.WEIGHTS = model_zoo.get_checkpoint_url("COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_3x.yaml")
-    predictor = DefaultPredictor(cfg)
-    visualiser_factory = partial(Visualizer, metadata=MetadataCatalog.get(cfg.DATASETS.TRAIN[0]), scale=1.2)
-    st.session_state['predictor'] = predictor
-    st.session_state['visualiser_factory'] = visualiser_factory
-
-
-
-def identity(frame: av.VideoFrame) -> av.VideoFrame:
-    return frame
+    st.session_state['predictors'] = {}
+    st.session_state['visualiser_factories'] = {}
+    for conf_name, cfg_file, th in model_configs:
+        cfg = get_cfg()
+        cfg.merge_from_file(model_zoo.get_config_file(cfg_file))
+        cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = th
+        cfg.MODEL.WEIGHTS = model_zoo.get_checkpoint_url(cfg_file)
+        predictor = DefaultPredictor(cfg)
+        visualiser_factory = partial(Visualizer, metadata=MetadataCatalog.get(cfg.DATASETS.TRAIN[0]), scale=1.2)
+        st.session_state['predictors'][conf_name] = predictor
+        st.session_state['visualiser_factories'][conf_name] = visualiser_factory
 
 
-def instance_segmentation_rcnn_r_50_fpn_3x(frame: av.VideoFrame):
+def _run_inference(frame: av.VideoFrame, predictor, visualiser_factory) -> av.VideoFrame:
     image = frame.to_ndarray(format='bgr24')
     visualiser = visualiser_factory(image)
     outputs = predictor(image)
     out = visualiser.draw_instance_predictions(outputs["instances"].to("cpu"))
     return av.VideoFrame.from_ndarray(out.get_image(), format='bgr24')
+
+
+def instance_segmentation(frame: av.VideoFrame):
+    predictor = predictors["instance-seg"]
+    visualiser_factory = visualiser_factories["instance-seg"]
+    return _run_inference(frame, predictor, visualiser_factory)
+
+
+def panoptic_segmentation(frame: av.VideoFrame):
+    predictor = predictors["panoptic-seg"]
+    visualiser_factory = visualiser_factories["panoptic-seg"]
+    return _run_inference(frame, predictor, visualiser_factory)
+
+
+def keypoints_detection(frame: av.VideoFrame):
+    predictor = predictors["keypoints"]
+    visualiser_factory = visualiser_factories["keypoints"]
+    return _run_inference(frame, predictor, visualiser_factory)
+
+
+def identity(frame: av.VideoFrame) -> av.VideoFrame:
+    return frame
 
 
 def convert2gray(frame: av.VideoFrame) -> av.VideoFrame:
@@ -59,9 +84,11 @@ if __name__ == '__main__':
     dummy_plugin = ProcessorPlugin()
     dummy_plugin.register_ref_processor(identity) # There can be only one ref_processor
     dummy_plugin.register_processor('convert to gray', convert2gray) # There can be more than one
-    dummy_plugin.register_processor('instance segmentation', instance_segmentation_rcnn_r_50_fpn_3x) # There can be more than one
+    dummy_plugin.register_processor('instance segmentation', instance_segmentation) # There can be more than one
+    dummy_plugin.register_processor('panoptic segmentation', panoptic_segmentation) # There can be more than one
+    dummy_plugin.register_processor('keypoints detection', keypoints_detection) # There can be more than one
     run(
         processor_plugin=dummy_plugin,
         rtc_configuration=DEFAULT_ICE_CONFIG, # you can set your own rtc config (check https://github.com/whitphx/streamlit-webrtc/tree/main)
-        layout='vertical', # this controls the layout of the streams (ref/processor) ['vertical', 'horizontal']
+        layout='horizontal', # this controls the layout of the streams (ref/processor) ['vertical', 'horizontal']
         )
