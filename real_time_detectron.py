@@ -22,6 +22,7 @@ from functools import partial
 model_configs = [
     ("instance-seg", "COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_3x.yaml", 0.5),
     ("panoptic-seg", "COCO-PanopticSegmentation/panoptic_fpn_R_50_3x.yaml", 0.5),
+    ("detection", "COCO-Detection/faster_rcnn_R_50_FPN_3x.yaml", 0.5),
     ("keypoints", "COCO-Keypoints/keypoint_rcnn_R_50_FPN_3x.yaml", 0.7),
     ]
 
@@ -57,6 +58,12 @@ def instance_segmentation(frame: av.VideoFrame):
     return _run_inference(frame, predictor, visualiser_factory)
 
 
+def detection(frame: av.VideoFrame):
+    predictor = predictors["detection"]
+    visualiser_factory = visualiser_factories["detection"]
+    return _run_inference(frame, predictor, visualiser_factory)
+
+
 def panoptic_segmentation(frame: av.VideoFrame):
     predictor = predictors["panoptic-seg"]
     visualiser_factory = visualiser_factories["panoptic-seg"]
@@ -87,6 +94,7 @@ if __name__ == '__main__':
     dummy_plugin.register_processor('instance segmentation', instance_segmentation) # There can be more than one
     dummy_plugin.register_processor('panoptic segmentation', panoptic_segmentation) # There can be more than one
     dummy_plugin.register_processor('keypoints detection', keypoints_detection) # There can be more than one
+    dummy_plugin.register_processor('detection', detection) # There can be more than one
     run(
         processor_plugin=dummy_plugin,
         rtc_configuration=DEFAULT_ICE_CONFIG, # you can set your own rtc config (check https://github.com/whitphx/streamlit-webrtc/tree/main)
