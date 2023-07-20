@@ -89,12 +89,12 @@ def convert2gray(frame: av.VideoFrame) -> av.VideoFrame:
 
 if __name__ == '__main__':
     dummy_plugin = ProcessorPlugin()
-    dummy_plugin.register_ref_processor(identity) # There can be only one ref_processor
-    dummy_plugin.register_processor('convert to gray', convert2gray) # There can be more than one
-    dummy_plugin.register_processor('instance segmentation', instance_segmentation) # There can be more than one
-    dummy_plugin.register_processor('panoptic segmentation', panoptic_segmentation) # There can be more than one
-    dummy_plugin.register_processor('keypoints detection', keypoints_detection) # There can be more than one
-    dummy_plugin.register_processor('detection', detection) # There can be more than one
+    dummy_plugin.register_ref_processor(identity)
+    dummy_plugin.register_processor('convert to gray', convert2gray)
+    dummy_plugin.register_processor('instance segmentation', instance_segmentation)
+    dummy_plugin.register_processor('panoptic segmentation', panoptic_segmentation)
+    dummy_plugin.register_processor('keypoints detection', keypoints_detection)
+    dummy_plugin.register_processor('detection', detection)
     run(
         processor_plugin=dummy_plugin,
         rtc_configuration=DEFAULT_ICE_CONFIG, # you can set your own rtc config (check https://github.com/whitphx/streamlit-webrtc/tree/main)
